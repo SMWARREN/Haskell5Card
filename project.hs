@@ -18,7 +18,7 @@ data Suit = Club | Diamond | Heart | Spade   deriving (Eq, Ord, Show)
 data Value = Two | Three | Four | Five | Six | Seven
           | Eight | Nine | Ten | Jack | Queen
           | King | Ace  deriving (Eq, Ord, Show)
-          
+
 -- Card itself 
 data Card = Card {
      value :: Value,
@@ -34,19 +34,19 @@ instance Eq Card where
 -- Card Order
 instance Ord Card where
 	Card a b > Card c d = a > c 	
-	Card a b < Card c d = a < c
+	Card a b < Card c d = a < c 
 	
 -- Possible Hands
---data Hand = HighCard [Card]
---          | PairOf Rank [Card]
---          | TwoPair Rank Rank [Card]
---          | ThreeOf Rank [Card]
---         | Straight [Card]
---          | Flush [Card]
---          | FullHouse Rank Rank [Card]
---          | FourOf Rank [Card]
---          | StraightFlush [Card]
---            deriving (Show, Eq, Ord)
+data Hand = HighCard Value
+          | PairOf Value Deck
+          | TwoPair Value Value Deck
+          | ThreeOf Value Deck
+          | Straight Deck
+          | Flush Suit
+          | FullHouse Value Value Deck
+          | FourOf Value Deck
+          | StraightFlush Deck
+             deriving (Show, Eq, Ord)
           
 
 -- Deck Type for Array of Cards
@@ -148,7 +148,7 @@ removeCards cards (x:xs) result =
       removeCards modCards subtractOneFromEach modCards;
 
 -- Solves List Inside List [[ .. ]]
---sideWork :: [Deck] -> Deck
+--sideWork :: [Deck] -> Deck     -- (JP) Tried to make this function more dynamic
 sideWork = foldr (++) []
   
 -- Print Better Representation of the Card Object
@@ -162,16 +162,11 @@ getUICard a =
           
 listSizeOneToObject (x:xs) = x
 
+-- Prints [Card] or Deck that's size == 1 -> Card
 printDeckSizeOneNicely :: Deck -> IO()
 printDeckSizeOneNicely x = 
     do
     getUICard (listSizeOneToObject x);
-
--- (not finished) Will Process Cards for Best Hand (?)
---processCards :: [Card] -> IO()
---processCards [] = []
---processCards (x:xs) = 
---      do
 
 -- prints each value in [Card] or Deck 
 printValues :: Deck -> IO()
@@ -210,8 +205,15 @@ isFlush (x:xs) | (length xs) == 0 = True
                | (length xs) == 1 = (suit x) == (suit (head xs))
                | (length xs) > 1 = (suit x) == (suit (head xs)) && isFlush (tail xs)               
 
-getHighestValueCard :: Deck -> Card
-getHighestValueCard a = maximum a
+--isStraight :: Deck -> Bool
+--isFourOfAKind :: Deck -> Bool
+--isFullHouse :: Deck -> Bool
+--isThreeOfAKind :: Deck -> Bool
+--isTwoPair :: Deck -> Bool
+
+               
+--getHighestValueCard :: Deck -> Card
+--getHighestValueCard a = maximum a
 
 ------- FOR TESTING -------
 cardA = Card Two Diamond
@@ -221,6 +223,25 @@ cardD = Card Five Diamond
 cardE = Card Six Diamond
 fakeCards = [cardA, cardB, cardC, cardD, cardE]
 ------- FOR TESTING -------
+
+
+-- Processes Cards for Best Hand
+processCards :: Deck -> Hand
+processCards d | isFlush d = Flush (suit (head d))
+               {-
+               | isStraight d
+                   && isFlush d = StraightFlush 
+               | isFourOfAKind d =FourOfAKind     
+               | isStraight d = Straight
+               | isFlush d = Flush
+               | isFullHouse d = FullHouse
+               | isThreeOfAKind d = ThreeOfAKind
+               | isTwoPair d = TwoPair
+               | isPair d = Pair
+               -}
+               | otherwise = HighCard (value (last (sort d)))
+
+
 ------------------------------------------------------------------------------------------------    
 --Start of Program
 main :: IO ()
@@ -254,29 +275,31 @@ main = do
   let numberArray = makeInteger charArray -- Makes ["1","2","3"] -> [1,2,3]
   
   let mod = (sideWork(removeCards yourCards numberArray [])) -- (SW)created sidework to make the un fold the double list
-  printRemainingCards mod
+  --printRemainingCards mod -- throws non-exhaustive exception
     -- (JP) THERES A BUG RIGHT HERE, but this is as far as I was going to go tonight
     -- The problem is that "mod" is a list within a list of cards, notice the [[...]]
     -- Some how have to remove the outer list before we keep working with it
     -- Should be: [Card, Card, Card] not [[Card, Card, Card]] --(SW)fixed this bug
 
   printNewLine
-  --putStrLn "The Cards You Have left are: "
-  --print mod -- This shows up in the old format, and can't use printCards because its not a size of 5 and throws exception
   putStrLn "Your New Cards are: "
   let yourCardsAfterDiscarding = (take ((subtract (length mod))5) (deckAfterComp)) ++ mod -- makes your deck now 
   printCards yourCardsAfterDiscarding
   
+  printNewLine
   putStrLn "The Computer Cards are: "
   printCards compOne
   
   --printNewLine
   --printValues yourCardsAfterDiscarding --I was doing this before just printing the values but couldn't figure out how to store them.
 
-  printNewLine
-  let justYourValues = (doubleArrayToSingle (getValues yourCardsAfterDiscarding [])) -- Couldn't figure out why I had to have it return [[Value]] but used doubleArrayToSingle to fix it.
-  printEachValue justYourValues
+  --printNewLine
+  --let justYourValues = (doubleArrayToSingle (getValues yourCardsAfterDiscarding [])) -- Couldn't figure out why I had to have it return [[Value]] but used doubleArrayToSingle to fix it.
+  --printEachValue justYourValues
   
+  let yourHand = processCards yourCardsAfterDiscarding
+  let computersHand = processCards compOne
+  print yourHand
   
   
   putStrLn "Finished."
