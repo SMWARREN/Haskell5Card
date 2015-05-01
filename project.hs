@@ -14,10 +14,25 @@ import Control.Monad.State
 
 -- Suit of Card
 data Suit = Club | Diamond | Heart | Spade   deriving (Eq, Ord, Show)
--- Value of Card
-data Value = Two | Three | Four | Five | Six | Seven
+-- Value of Card (The One is only for incrementing Value)
+data Value = One | Two | Three | Four | Five | Six | Seven
           | Eight | Nine | Ten | Jack | Queen
-          | King | Ace  deriving (Eq, Ord, Show)
+          | King | Ace  deriving (Eq, Ord, Show, Enum)
+          
+instance Num Value where
+  Two + One = Three
+  Three + One = Four
+  Four + One = Five
+  Five + One = Six
+  Six + One = Seven
+  Seven + One = Eight
+  Eight + One = Nine
+  Nine + One = Ten
+  Ten+ One = Jack
+  Jack + One = Queen
+  Queen + One = King
+  King + One = Ace
+  Ace + One = Two
 
 -- Card itself 
 data Card = Card {
@@ -38,10 +53,10 @@ instance Ord Card where
 	
 -- Possible Hands
 data Hand = HighCard Value
-          | PairOf Value Deck
+          | PairOf Value
           | TwoPair Value Value Deck
           | ThreeOf Value Deck
-          | Straight Deck
+          | Straight [Value]
           | Flush Suit
           | FullHouse Value Value Deck
           | FourOf Value Deck
@@ -205,7 +220,17 @@ isFlush (x:xs) | (length xs) == 0 = True
                | (length xs) == 1 = (suit x) == (suit (head xs))
                | (length xs) > 1 = (suit x) == (suit (head xs)) && isFlush (tail xs)               
 
---isStraight :: Deck -> Bool
+isStraight :: [Value] -> Bool
+isStraight (x:xs) | (length xs) == 0 = False
+                  | (length xs) == 1 = (x + One) == (head xs)
+                  | (length xs) > 1 = (x + One) == (head xs) && isStraight (tail xs)      
+
+isPair :: [Value] -> Bool
+isPair (x:xs)     | (length xs) == 0 = True
+                  | (length xs) == 1 = x == (head xs)
+                  | (length xs) > 1 = x == (head xs) && isPair (tail xs) 				  
+
+               
 --isFourOfAKind :: Deck -> Bool
 --isFullHouse :: Deck -> Bool
 --isThreeOfAKind :: Deck -> Bool
@@ -220,28 +245,33 @@ cardA = Card Two Diamond
 cardB = Card Three Diamond
 cardC = Card Four Diamond
 cardD = Card Five Diamond
-cardE = Card Six Diamond
+cardE = Card Seven Heart
 fakeCards = [cardA, cardB, cardC, cardD, cardE]
 ------- FOR TESTING -------
 
+--isPair :: Deck -> Bool
+--isPair (x:xs) | (length xs) > 0 = (value x) == 
 
 -- Processes Cards for Best Hand
 processCards :: Deck -> Hand
-processCards d | isFlush d = Flush (suit (head d))
+processCards d | isStraight (sort (doubleArrayToSingle (getValues d [])))
+                   && isFlush d = StraightFlush d
+               | isStraight (sort (doubleArrayToSingle (getValues d []))) = Straight (sort (doubleArrayToSingle (getValues d [])))
+               | isFlush d = Flush (suit (head d))
+			   | isPair (sort (doubleArrayToSingle (getValues d []))) = PairOf (value (head d))
                {-
-               | isStraight d
-                   && isFlush d = StraightFlush 
-               | isFourOfAKind d =FourOfAKind     
-               | isStraight d = Straight
-               | isFlush d = Flush
                | isFullHouse d = FullHouse
+               | isFourOfAKind d =FourOfAKind
                | isThreeOfAKind d = ThreeOfAKind
                | isTwoPair d = TwoPair
                | isPair d = Pair
                -}
-               | otherwise = HighCard (value (last (sort d)))
+               | otherwise = HighCard (last (sort (doubleArrayToSingle (getValues d []))))
 
-
+bestHands :: Hand -> Hand -> Hand
+bestHands a b | a < b = b
+              | a > b = a
+              | a == b = a
 ------------------------------------------------------------------------------------------------    
 --Start of Program
 main :: IO ()
@@ -299,7 +329,19 @@ main = do
   
   let yourHand = processCards yourCardsAfterDiscarding
   let computersHand = processCards compOne
+  
+  printNewLine
+  putStr "Your Hand: " 
   print yourHand
+  putStr "Computer's Hand: "
+  print computersHand
   
+  --let didUserWin = 
   
+  let winningHand =  bestHands yourHand computersHand
+  printNewLine
+  putStr "Best Hand: "
+  print winningHand
+  
+  printNewLine
   putStrLn "Finished."
