@@ -9,8 +9,8 @@ import Data.List
 import Data.List.Split
 import System.IO
 import System.IO.Unsafe (unsafePerformIO)
-import System.Random 
-import Control.Monad.State 
+import System.Random
+
 
 -- Suit of Card
 data Suit = Club | Diamond | Heart | Spade   deriving (Eq, Ord, Show)
@@ -53,8 +53,8 @@ instance Ord Card where
 	
 -- Possible Hands
 data Hand = HighCard Value
-          | PairOf Value
-          | TwoPair Value Value Deck
+          | Pair
+          | TwoPair
           | ThreeOf Value Deck
           | Straight [Value]
           | Flush Suit
@@ -214,51 +214,58 @@ printEachValue (x:xs) =
 doubleArrayToSingle :: [[Value]] -> [Value]
 doubleArrayToSingle (x:xs) = x
 
--- Checks to see if Cards are a Flush (All the same Suit) [BUG: doesn't work if last element in list is not same suit]
+-- Checks to see if Cards are a Flush (All the same Suit)
 isFlush :: Deck -> Bool
-isFlush (x:xs) | (length xs) == 0 = True
-               | (length xs) == 1 = (suit x) == (suit (head xs))
-               | (length xs) > 1 = (suit x) == (suit (head xs)) && isFlush (tail xs)               
+isFlush (x:xs) | (length xs) == 0 = False
+               | (length xs) >= 1 = (suit x) == (suit (head xs)) && isFlush (tail xs)               
 
 isStraight :: [Value] -> Bool
 isStraight (x:xs) | (length xs) == 0 = False
-                  | (length xs) == 1 = (x + One) == (head xs)
-                  | (length xs) > 1 = (x + One) == (head xs) && isStraight (tail xs)      
+                  | (length xs) >= 1 = (x + One) == (head xs) && isStraight (tail xs)               
 
 isPair :: [Value] -> Bool
-isPair (x:xs)     | (length xs) == 0 = True
-                  | (length xs) == 1 = x == (head xs)
-                  | (length xs) > 1 = x == (head xs) && isPair (tail xs) 				  
-
+isPair (x:xs)     | (length xs) == 0 = False
+                  | (length xs) >= 1 = x == (head xs) || isPair (tail xs) 				  
                
 --isFourOfAKind :: Deck -> Bool
 --isFullHouse :: Deck -> Bool
 --isThreeOfAKind :: Deck -> Bool
 --isTwoPair :: Deck -> Bool
-
                
+
 --getHighestValueCard :: Deck -> Card
 --getHighestValueCard a = maximum a
 
 ------- FOR TESTING -------
 cardA = Card Two Diamond
-cardB = Card Three Diamond
+cardB = Card Jack Diamond
 cardC = Card Four Diamond
 cardD = Card Five Diamond
-cardE = Card Seven Heart
-fakeCards = [cardA, cardB, cardC, cardD, cardE]
+cardE = Card Seven Diamond
+flushCards = [cardA, cardB, cardC, cardD, cardE]
+------- FOR TESTING -------
+
+
+------- FOR TESTING -------
+cardF = Card Two Heart
+cardG = Card Three Diamond
+cardH = Card Four Spade
+cardI = Card Five Diamond
+cardJ = Card Six Heart
+straightCards = [cardF, cardG, cardH, cardI, cardJ]
 ------- FOR TESTING -------
 
 --isPair :: Deck -> Bool
 --isPair (x:xs) | (length xs) > 0 = (value x) == 
 
 -- Processes Cards for Best Hand
+-- Processes Cards for Best Hand
 processCards :: Deck -> Hand
 processCards d | isStraight (sort (doubleArrayToSingle (getValues d [])))
                    && isFlush d = StraightFlush d
                | isStraight (sort (doubleArrayToSingle (getValues d []))) = Straight (sort (doubleArrayToSingle (getValues d [])))
                | isFlush d = Flush (suit (head d))
-			   | isPair (sort (doubleArrayToSingle (getValues d []))) = PairOf (value (head d))
+               | isPair (sort (doubleArrayToSingle (getValues d []))) = Pair
                {-
                | isFullHouse d = FullHouse
                | isFourOfAKind d =FourOfAKind
@@ -268,10 +275,20 @@ processCards d | isStraight (sort (doubleArrayToSingle (getValues d [])))
                -}
                | otherwise = HighCard (last (sort (doubleArrayToSingle (getValues d []))))
 
+didUserWin :: Hand -> Hand -> Bool
+didUserWin user comp | user < comp = False
+                     | user > comp = True
+                     | user == comp = False
+               
 bestHands :: Hand -> Hand -> Hand
 bestHands a b | a < b = b
               | a > b = a
               | a == b = a
+              
+result :: Bool -> IO()
+result a | a == True = putStrLn "You Win!"
+         | a == False = putStrLn "You Did Not Win!"
+         
 ------------------------------------------------------------------------------------------------    
 --Start of Program
 main :: IO ()
@@ -289,6 +306,7 @@ main = do
   putStrLn "Your Cards are: "
   printCards yourCards
     
+  
   printNewLine
   let compOne = take 5(deckAfterUser)
   let deckAfterComp = drop 5(deckAfterUser)
@@ -336,12 +354,13 @@ main = do
   putStr "Computer's Hand: "
   print computersHand
   
-  --let didUserWin = 
+  let userWin = didUserWin yourHand computersHand
   
   let winningHand =  bestHands yourHand computersHand
   printNewLine
   putStr "Best Hand: "
   print winningHand
   
+  result userWin
   printNewLine
   putStrLn "Finished."
